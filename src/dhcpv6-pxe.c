@@ -5,14 +5,28 @@
 #include <sys/timerfd.h>
 #include <arpa/inet.h>
 
-#include "odhcpd.h"
+#include <libubox/utils.h>
+#include <libubox/list.h>
+
 #include "dhcpv6.h"
 #include "dhcpv6-pxe.h"
+
+struct ipv6_pxe_entry {
+	struct list_head list;	// List head for linking
+	uint32_t arch;
+
+	// Ready to send
+	struct __attribute__((packed)) {
+		uint16_t type;		// In network endianess
+		uint16_t len;		// In network endianess, without /0
+		char payload[];		// Null-terminated here
+	} bootfile_url;
+};
 
 static struct ipv6_pxe_entry* ipv6_pxe_default = NULL;
 LIST_HEAD(ipv6_pxe_list);
 
-struct ipv6_pxe_entry* ipv6_pxe_entry_new(uint32_t arch, const char* url) {
+const struct ipv6_pxe_entry* ipv6_pxe_entry_new(uint32_t arch, const char* url) {
 	size_t url_len = strlen(url);
 	struct ipv6_pxe_entry* ipe = malloc(sizeof(struct ipv6_pxe_entry) + url_len + 1);
 	if (!ipe)
@@ -33,7 +47,7 @@ struct ipv6_pxe_entry* ipv6_pxe_entry_new(uint32_t arch, const char* url) {
 	return ipe;
 }
 
-static const struct ipv6_pxe_entry* ipv6_pxe_of_arch(uint16_t arch) {
+const struct ipv6_pxe_entry* ipv6_pxe_of_arch(uint16_t arch) {
 	struct ipv6_pxe_entry* entry;
 	list_for_each_entry(entry, &ipv6_pxe_list, list) {
 		if (arch == entry->arch)

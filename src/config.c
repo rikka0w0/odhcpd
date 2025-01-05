@@ -18,7 +18,7 @@
 #include <libubox/vlist.h>
 
 #include "odhcpd.h"
-#include "dhcpv6-pxe.c"
+#include "dhcpv6-pxe.h"
 
 static struct blob_buf b;
 static int reload_pipe[2] = { -1, -1 };

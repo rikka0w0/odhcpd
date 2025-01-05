@@ -539,6 +539,7 @@ static void handle_client_request(void *addr, void *data, size_t len,
 		.addr = iface->dhcpv6_pd_cer,
 	};
 
+
 	uint8_t pdbuf[512];
 	struct iovec iov[IOV_TOTAL] = {
 		[IOV_NESTED] = {NULL, 0},
