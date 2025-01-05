@@ -429,8 +429,6 @@ inline static struct dhcp_assignment *alloc_assignment(size_t extra_len)
 	return a;
 }
 
-void ipv6_pxe_serve_boot_url(uint16_t arch, struct iovec* iov);
-
 // Exported main functions
 int odhcpd_register(struct odhcpd_event *event);
 int odhcpd_deregister(struct odhcpd_event *event);

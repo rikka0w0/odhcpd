@@ -25,6 +25,7 @@
 
 #include "odhcpd.h"
 #include "dhcpv6.h"
+#include "dhcpv6-pxe.h"
 #ifdef DHCPV4_SUPPORT
 #include "dhcpv4.h"
 #endif
