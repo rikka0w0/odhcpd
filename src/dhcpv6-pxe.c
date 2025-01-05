@@ -1,11 +1,6 @@
-#include <errno.h>
 #include <unistd.h>
 #include <stddef.h>
-#include <resolv.h>
-#include <sys/timerfd.h>
-#include <arpa/inet.h>
 
-#include <libubox/utils.h>
 #include <libubox/list.h>
 
 #include "dhcpv6.h"
