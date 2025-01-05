@@ -664,9 +664,8 @@ static void handle_client_request(void *addr, void *data, size_t len,
 					break;
 				}
 			}
-		} else if (otype == 61) {
+		} else if (otype == DHCPV6_OPT_CLIENT_ARCH) {
 			uint16_t arch_code = ntohs(((uint16_t*)odata)[0]);
-			void ipv6_pxe_serve_boot_url(uint16_t, struct iovec*);
 			ipv6_pxe_serve_boot_url(arch_code, &iov[IOV_BOOTFILE_URL]);
 		}
 	}

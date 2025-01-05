@@ -27,8 +27,12 @@ static void lease_update(struct vlist_tree *tree, struct vlist_node *node_new,
 			 struct vlist_node *node_old);
 
 struct vlist_tree leases = VLIST_TREE_INIT(leases, lease_cmp, lease_update, true, false);
+
 AVL_TREE(interfaces, avl_strcmp, false, NULL);
+
+static struct ipv6_pxe_entry* ipv6_pxe_default = NULL;
 LIST_HEAD(ipv6_pxe_list);
+
 struct config config = {.legacy = false, .main_dhcpv4 = false,
 			.dhcp_cb = NULL, .dhcp_statefile = NULL, .dhcp_hostsfile = NULL,
 			.log_level = LOG_WARNING};
@@ -43,6 +47,34 @@ struct config config = {.legacy = false, .main_dhcpv4 = false,
 #define PD_MIN_LEN_MAX (64-2) // must delegate at least 2 bits of prefix
 
 #define OAF_DHCPV6	(OAF_DHCPV6_NA | OAF_DHCPV6_PD)
+
+struct ipv6_pxe_entry {
+	struct list_head list;	// List head for linking
+	uint32_t arch;
+
+	// Ready to send
+	struct __attribute__((packed)) {
+		uint16_t type;		// In network endianess
+		uint16_t len;		// In network endianess, without /0
+		char payload[];		// Null-terminated here
+	} bootfile_url;
+};
+
+enum {
+	IPV6_PXE_URL,
+	IPV6_PXE_ARCH,
+	IPV6_PXE_MAX
+};
+
+static const struct blobmsg_policy ipv6_pxe_attrs[IPV6_PXE_MAX] = {
+	[IPV6_PXE_URL] = {.name = "url", .type = BLOBMSG_TYPE_STRING },
+	[IPV6_PXE_ARCH] = {.name = "arch", .type = BLOBMSG_TYPE_INT32 },
+};
+
+const struct uci_blob_param_list ipv6_pxe_attr_list = {
+	.n_params = IPV6_PXE_MAX,
+	.params = ipv6_pxe_attrs,
+};
 
 enum {
 	IFACE_ATTR_INTERFACE,
@@ -1624,36 +1656,6 @@ void reload_services(struct interface *iface)
 	}
 }
 
-struct ipv6_pxe_entry {
-	struct list_head list;	// List head for linking
-	uint32_t arch;
-
-	// Ready to send
-	struct __attribute__((packed)) {
-		uint16_t type;		// In network endianess
-		uint16_t len;		// In network endianess, without /0
-		char payload[];		// Null-terminated here
-	} bootfile_url;
-};
-
-static struct ipv6_pxe_entry* ipv6_pxe_default = NULL;
-
-enum {
-	IPV6_PXE_URL,
-	IPV6_PXE_ARCH,
-	IPV6_PXE_MAX
-};
-
-static const struct blobmsg_policy ipv6_pxe_attrs[IPV6_PXE_MAX] = {
-	[IPV6_PXE_URL] = {.name = "url", .type = BLOBMSG_TYPE_STRING },
-	[IPV6_PXE_ARCH] = {.name = "arch", .type = BLOBMSG_TYPE_INT32 },
-};
-
-const struct uci_blob_param_list ipv6_pxe_attr_list = {
-	.n_params = IPV6_PXE_MAX,
-	.params = ipv6_pxe_attrs,
-};
-
 static int ipv6_pxe_from_uci(struct uci_section* s)
 {
 	blob_buf_init(&b, 0);
@@ -1677,7 +1679,7 @@ static int ipv6_pxe_from_uci(struct uci_section* s)
 
 	memcpy(ipe->bootfile_url.payload, url, url_len + 1);
 	ipe->bootfile_url.len = htons(url_len);
-	ipe->bootfile_url.type = htons(59);
+	ipe->bootfile_url.type = htons(DHCPV6_OPT_BOOTFILE_URL);
 
 	if (tb[IPV6_PXE_ARCH]) {
 		ipe->arch = blobmsg_get_u32(tb[IPV6_PXE_ARCH]);
@@ -1700,7 +1702,6 @@ static const struct ipv6_pxe_entry* ipv6_pxe_of_arch(uint16_t arch) {
 	return ipv6_pxe_default;
 }
 
-void ipv6_pxe_serve_boot_url(uint16_t arch, struct iovec* iov);
 void ipv6_pxe_serve_boot_url(uint16_t arch, struct iovec* iov) {
 	const struct ipv6_pxe_entry* entry = ipv6_pxe_of_arch(arch);
 
@@ -1739,7 +1740,6 @@ static void ipv6_pxe_dump(void) {
 }
 
 static void ipv6_pxe_clear(void) {
-	//syslog(LOG_INFO, "ipv6_pxe_clear()");
 	struct ipv6_pxe_entry* entry, * temp;
 	list_for_each_entry_safe(entry, temp, &ipv6_pxe_list, list) {
 		list_del(&entry->list);
